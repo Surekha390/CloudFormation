@@ -1,0 +1,176 @@
+# CloudFormation Template with Detailed Comments
+# This template demonstrates the use of intrinsic functions and conditions.
+# It creates an EC2 instance, an S3 bucket, and an RDS database.
+
+# Template Version
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  This template showcases CloudFormation intrinsic functions and conditions.
+  It creates an EC2 instance, an S3 bucket, and an RDS database.
+
+# Parameters Section
+# Parameters allow users to input custom values when creating or updating a stack.
+Parameters:
+  # Environment Type Parameter
+  EnvironmentType:
+    Description: The type of environment (dev, prod).
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+    ConstraintDescription: Must be either 'dev' or 'prod'.
+
+  # Instance Type Parameter
+  InstanceType:
+    Description: Type of EC2 instance to launch.
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - t2.small
+      - t2.medium
+    ConstraintDescription: Must be a valid EC2 instance type.
+
+  # VPC CIDR Block Parameter
+  VpcCidr:
+    Description: CIDR block for the VPC.
+    Type: String
+    Default: 10.0.0.0/16
+
+# Mappings Section
+# Mappings allow you to define static values that can be selected based on a key.
+Mappings:
+  # Region to AMI ID Mapping
+  RegionMap:
+    us-east-1:
+      AMI: ami-0abcdef1234567890  # Replace with a valid AMI ID for us-east-1.
+    us-west-1:
+      AMI: ami-0abcdef1234567891  # Replace with a valid AMI ID for us-west-1.
+    eu-west-1:
+      AMI: ami-0abcdef1234567892  # Replace with a valid AMI ID for eu-west-1.
+
+# Conditions Section
+# Conditions allow you to control resource creation based on parameter values.
+Conditions:
+  # Condition: Is the environment "prod"?
+  IsProd: !Equals [!Ref EnvironmentType, "prod"]
+
+  # Condition: Is the environment NOT "prod"?
+  IsNotProd: !Not [!Condition IsProd]
+
+  # Condition: Is the instance type "t2.medium"?
+  IsLargeInstance: !Equals [!Ref InstanceType, "t2.medium"]
+
+  # Condition: Is the environment "prod" AND the instance type "t2.medium"?
+  IsProdAndLargeInstance: !If
+    !And 
+    !Condition IsProd
+    !Condition IsLargeInstance
+     -t3.medium
+     -t2.small]
+
+  IsProdAndLargeInstanceShort:
+    !If 
+      - !Equals
+        - !Ref EnvironmentType
+        - Production
+      - !Equals
+        - !Ref InstanceType
+        - t2.medium
+
+# Resources Section
+# Resources define the AWS resources to be created.
+Resources:
+  # VPC
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr  # Use the VpcCidr parameter to define the CIDR block.
+
+  # Subnet
+  MySubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC  # Reference the VPC created above.
+      CidrBlock: !Select [0, !Cidr [!Ref VpcCidr, 16, 8]]  # Use Fn::Cidr to calculate the first subnet.
+      AvailabilityZone: !Select [0, !GetAZs]  # Use Fn::GetAZs to get the first AZ in the region.
+
+  # Security Group for EC2 Instance
+  MySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH access via port 22.
+      VpcId: !Ref MyVPC  # Reference the VPC created above.
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0  # Allow SSH access from any IP.
+
+  # EC2 Instance
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !If [IsProdAndLargeInstance, "t2.medium", "t2.micro"]  # Use Fn::If to set the instance type conditionally.
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMI]  # Use Fn::FindInMap to get the AMI ID based on the region.
+      KeyName: my-key-pair  # Replace with your EC2 key pair name.
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          echo "Hello, World!"  # Use Fn::Base64 to encode the user data script.
+      SubnetId: !Ref MySubnet  # Reference the subnet created above.
+      SecurityGroupIds:
+        - !Ref MySecurityGroup  # Reference the security group created above.
+
+  # S3 Bucket
+  MyS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Join ["-", [!Ref "AWS::StackName", "my-bucket"]]  # Use Fn::Join to create a dynamic bucket name.
+
+  # RDS Database
+  MyDBInstance:
+    Type: AWS::RDS::DBInstance
+    Condition: IsProd  # Only create this resource if the environment is "prod."
+    Properties:
+      Engine: mysql
+      DBInstanceIdentifier: !Sub "${AWS::StackName}-db"  # Use Fn::Sub to create a dynamic DB identifier.
+      MasterUsername: admin
+      MasterUserPassword: MySecurePassword123!
+      AllocatedStorage: 20
+      DBInstanceClass: db.t2.micro
+      VPCSecurityGroups:
+        - !GetAtt MySecurityGroup.GroupId  # Use Fn::GetAtt to reference the security group ID.
+      DBSubnetGroupName: !Ref MyDBSubnetGroup  # Reference the DB subnet group created below.
+
+  # DB Subnet Group
+  MyDBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for RDS.
+      SubnetIds:
+        - !Ref MySubnet  # Reference the subnet created above.
+
+# Outputs Section
+# Outputs allow you to retrieve information about the resources created.
+Outputs:
+  # EC2 Instance ID
+  InstanceId:
+    Description: The Instance ID of the newly created EC2 instance.
+    Value: !Ref MyEC2Instance  # Use Fn::Ref to reference the EC2 instance.
+
+  # Public IP Address
+  PublicIP:
+    Description: The public IP address of the EC2 instance.
+    Value: !GetAtt MyEC2Instance.PublicIp  # Use Fn::GetAtt to retrieve the public IP.
+
+  # S3 Bucket Name
+  BucketName:
+    Description: The name of the S3 bucket.
+    Value: !Ref MyS3Bucket  # Use Fn::Ref to reference the S3 bucket.
+
+  # RDS Endpoint
+  DBEndpoint:
+    Description: The endpoint of the RDS instance.
+    Value: !GetAtt MyDBInstance.Endpoint.Address  # Use Fn::GetAtt to retrieve the RDS endpoint.

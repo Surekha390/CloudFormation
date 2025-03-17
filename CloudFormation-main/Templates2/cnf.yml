@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  This template creates an Amazon EC2 instance with a security group.
+  It demonstrates the use of Parameters, Mappings, and Outputs.
+
+Parameters:
+  InstanceType:
+    Description: The type of EC2 instance to launch.
+    Type: String
+    Default: t2.micro
+    AllowedValues:  
+      - t2.micro
+      - t2.medium
+    ConstraintDescription: Must be a valid Ec2 instance type 
+
+  KeyName:
+    Description: The name of an existing EC2 KeyPair to enable SSH access.
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: Must be the name of an existing EC2 KeyPair.
+
+  SSHLocation:
+    Description: The IP address range allowed to SSH into the EC2 instance.
+    Type: String
+    Default: 0.0.0.0/0
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'  # Regex for IP CIDR.
+    ConstraintDescription: Must be a valid IP CIDR range (e.g., 192.168.1.0/24).
+
+  EnvironmentType:
+    Description: The type of environment (dev, prod).
+    Type: String
+    Default: dev
+    AllowedValues:
+      - prod
+      - dev
+    ConstraintDescription: Must be 'prod'or 'dev'.
+
+Mappings:
+  RegionMap:
+    us-east-1:
+      AMI: ami-0abcdef1234567890 
+    us-west-1:
+      AMI: ami-0abcdef1234567891 
+    eu-central-1:
+      AMI: ami-0764af88874b6b852  
+
+  EnvironmentConfig:
+    dev:
+      InstanceType: t3.micro 
+    prod:
+      InstanceType: t2.medium
+
+Resources:
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !FindInMap [EnvironmentConfig, !Ref EnvironmentType, InstanceType]  
+      KeyName: !Ref KeyName 
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMI] 
+      SecurityGroups:
+        - !Ref InstanceSecurityGroup
+
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH access via port 22.
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22  
+          ToPort: 22
+          CidrIp: !Ref SSHLocation 
+          
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+Outputs:
+  InstanceId:
+    Description: The Instance ID of the newly created EC2 instance.
+    Value: !Ref MyEC2Instance 
+
+  PublicIP:
+    Description: The public IP address of the EC2 instance.
+    Value: !GetAtt MyEC2Instance.PublicIp 

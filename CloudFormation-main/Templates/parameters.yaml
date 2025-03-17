@@ -1,0 +1,6 @@
+- ParameterKey: DatabaseName
+  ParameterValue: mydatabase
+- ParameterKey: DatabaseUsername
+  ParameterValue: admin
+- ParameterKey: DatabasePassword
+  ParameterValue: MySecurePassword123!

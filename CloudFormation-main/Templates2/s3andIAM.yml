@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Template for initial deployment of an S3 bucket and IAM role (Free Tier compatible).
+
+Resources:
+  MyS3Bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub "my-bucket-${AWS::AccountId}-${AWS::Region}"  # Unique bucket name
+      AccessControl: Private
+      VersioningConfiguration:
+          Status: Enabled
+
+  MyIAMRole:
+    Type: AWS::IAM::Role
+    DeletionPolicy: Delete
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: S3AccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub "${MyS3Bucket.Arn}/*"
+
+Outputs:
+  BucketName:
+    Description: Name of the S3 bucket
+    Value: !Ref MyS3Bucket
+  RoleArn:
+    Description: ARN of the IAM role
+    Value: !GetAtt MyIAMRole.Arn

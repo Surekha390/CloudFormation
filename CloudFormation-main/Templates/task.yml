@@ -1,0 +1,36 @@
+#Task: Adjust this template to create an ec2 instance with different configurations per environment. Use what you learned today.
+
+#Use T2.micro for dev and T2.medium for prod
+
+#Configure the bucket to be named after the environment and the current region. The region should only consist of the are Id. (eg. eu or us)
+
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: A template to create an S3 bucket and an EC2 instance based on the environment.
+
+Parameters:
+  EnvironmentType:
+    Description: Deployment environment
+    Type: "String"
+    AllowedValues:
+      - "prod",
+      - "test",
+    Default: "dev"
+
+Resources:
+  # S3 Bucket resource to be conditionally created
+  MyS3Bucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName:  !Sub "my-${EnvironmentType}-${AWS::Region}"
+
+  # EC2 Instance with conditional instance type
+  MyEC2Instance:
+    Type: "AWS::EC2::Instance",
+    Properties:
+      InstanceType:  # To be set conditionally
+      Fn::If:
+      - Isprod
+      - "t2.medium"
+      - "t2.micro" 
+      ImageId: 

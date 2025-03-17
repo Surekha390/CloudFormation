@@ -1,0 +1,36 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "Parent stack to deploy three child stacks: S3, IAM, and EC2."
+
+#testing actions
+
+Resources:
+  # Child Stack 1: S3 Bucket
+  S3Stack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: "https://s3.amazonaws.com/cfbucket2025/s3-stack.yaml"
+
+  # Child Stack 2: IAM Role
+  IAMStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: "https://s3.amazonaws.com/cfbucket2025/iam-stack.yaml"
+
+  # Child Stack 3: EC2 Instance
+  EC2Stack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: "https://s3.amazonaws.com/cfbucket2025/ec2-stack.yaml"
+      Parameters:
+        IAMRoleName: !GetAtt IAMStack.Outputs.IAMRoleName  # Pass IAM role name to EC2 stack
+
+Outputs:
+  S3BucketName:
+    Description: "Name of the S3 bucket created by S3Stack"
+    Value: !GetAtt S3Stack.Outputs.S3BucketName
+  IAMRoleName:
+    Description: "Name of the IAM role created by IAMStack"
+    Value: !GetAtt IAMStack.Outputs.IAMRoleName
+  EC2InstanceId:
+    Description: "ID of the EC2 instance created by EC2Stack"
+    Value: !GetAtt EC2Stack.Outputs.EC2InstanceId

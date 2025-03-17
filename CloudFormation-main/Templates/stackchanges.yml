@@ -1,0 +1,33 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Simple CloudFormation template to create an EC2 instance within the Free Tier.
+
+Resources:
+  MySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH access
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-0c8db01b2e8e5298d
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+      KeyName: cfkey
+      Tags:
+        - Key: Name
+          Value: MyFreeTierInstance
+
+Outputs:
+  InstanceId:
+    Description: Instance ID of the created EC2 instance
+    Value: !Ref MyEC2Instance
+  PublicIP:
+    Description: Public IP address of the created EC2 instance
+    Value: !GetAtt MyEC2Instance.PublicIp

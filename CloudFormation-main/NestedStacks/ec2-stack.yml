@@ -1,0 +1,27 @@
+#hello
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "Child stack to create an EC2 instance."
+
+Parameters:
+  IAMRoleName:
+    Description: "Name of the IAM role to attach to the EC2 instance"
+    Type: String
+
+Resources:
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-06ee6255945a96aba
+      InstanceType: t2.micro
+      IamInstanceProfile: !Ref MyInstanceProfile
+
+  MyInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref IAMRoleName
+
+Outputs:
+  EC2InstanceId:
+    Description: "ID of the EC2 instance"
+    Value: !Ref MyEC2Instance
